@@ -141,22 +141,24 @@ def load_synth_data(degree_as_tag,random):
     label_dict = {}
     feat_dict = {}
     mapped = len(label_dict)
-    label_dict[1] = mapped
     graph_list=[]
-    for k in range(100,200):
-        for j in range(5):
-            g=nx.erdos_renyi_graph(k,0.1)
-            graph_list.append(g)
-            g_list.append(S2VGraph(g, 1, [0] * g.number_of_nodes()))
-    save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('erdos')))
-    graph_list=[]
-    mapped = len(label_dict)
+    # label_dict[1] = mapped
+    # 
+    # for k in range(100,200):
+    #     for j in range(10):
+    #         i = randint(1,10)*0.1
+    #         g=nx.fast_gnp_random_graph(k,i)
+    #         graph_list.append(g)
+    #         g_list.append(S2VGraph(g, 1, [0] * g.number_of_nodes()))
+    # save_graph_list(
+    #             graph_list,
+    #             os.path.join('saved_graphs', '{}_test.p'.format('erdos')))
+    # graph_list=[]
+    # mapped = len(label_dict)
     label_dict[2] = mapped
         #c_sizes = [15] * 4
     for k in range(100,200):
-        for j in range(5):
+        for j in range(10):
             g=nx.watts_strogatz_graph(k,4,0.1)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 2, [0] * g.number_of_nodes()))
@@ -168,7 +170,7 @@ def load_synth_data(degree_as_tag,random):
     label_dict[3] = mapped
         #c_sizes = [15] * 4
     for k in range(100,200):
-        for j in range(5):
+        for j in range(10):
             g=nx.barabasi_albert_graph(k,4)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 3, [0] * g.number_of_nodes()))
@@ -180,7 +182,7 @@ def load_synth_data(degree_as_tag,random):
     label_dict[4] = mapped
         #c_sizes = [15] * 4
     for k in range(100,200):
-        for j in range(5):
+        for j in range(10):
             c_sizes = np.random.choice(list(range(12, 17)), 2)
             g=n_community(c_sizes, p_inter=0.05)
             graph_list.append(g)
@@ -193,23 +195,24 @@ def load_synth_data(degree_as_tag,random):
     label_dict[5] = mapped
         #c_sizes = [15] * 4
     for k in range(100,200):
-        g=nx.ladder_graph(k)
-        graph_list.append(g)
-        g_list.append(S2VGraph(g, 5, [0] * g.number_of_nodes()))
-    save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('ladder')))
+        for i in range(5):
+            g=nx.ladder_graph(k)
+            graph_list.append(g)
+            g_list.append(S2VGraph(g, 5, [0] * g.number_of_nodes()))
+    save_graph_list(graph_list,
+                    os.path.join('saved_graphs', '{}_test.p'.format('ladder')))
     graph_list=[]
     mapped = len(label_dict)
     label_dict[6] = mapped
         #c_sizes = [15] * 4
     for k in range(10,20):
         for j in range(10,20):
-            g=nx.grid_2d_graph(k, j)
-            adj_matrix = nx.adjacency_matrix(g)
-            g=nx.Graph(adj_matrix)
-            graph_list.append(g)
-            g_list.append(S2VGraph(g, 6, [0] * g.number_of_nodes()))
+            for i in range(5):
+                g=nx.grid_2d_graph(k, j)
+                adj_matrix = nx.adjacency_matrix(g)
+                g=nx.Graph(adj_matrix)
+                graph_list.append(g)
+                g_list.append(S2VGraph(g, 6, [0] * g.number_of_nodes()))
     save_graph_list(
                 graph_list,
                 os.path.join('saved_graphs', '{}_test.p'.format('grid')))
@@ -250,9 +253,10 @@ def load_synth_data(degree_as_tag,random):
             g.node_features = torch.randn(len(g.node_tags), 1)
     else :
         for g in g_list:
-            g.node_features = torch.zeros(len(g.node_tags), len(tagset))
-            g.node_features[range(len(g.node_tags)), [tag2index[tag]
-                                                    for tag in g.node_tags]] = 1
+            g.node_features = torch.ones(len(g.node_tags), 1)
+            # g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+            # g.node_features[range(len(g.node_tags)), [tag2index[tag]
+            #                                         for tag in g.node_tags]] = 1
 
     print('# classes: %d' % len(label_dict))
     print('# maximum node tag: %d' % len(tagset))
@@ -307,9 +311,10 @@ def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
             g.node_features = torch.randn(len(g.node_tags), 1)
     else :
         for g in g_list:
-            g.node_features = torch.zeros(len(g.node_tags), lentagset)
-            g.node_features[range(len(g.node_tags)), [tag2index[tag]
-                                                    for tag in g.node_tags]] = 1
+            g.node_features = torch.ones(len(g.node_tags), 1)
+            # g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+            # g.node_features[range(len(g.node_tags)), [tag2index[tag]
+            #                                         for tag in g.node_tags]] = 1
 
     print('# classes: %d' % len(label_dict))
     print('# maximum node tag: %d' % len(tagset))

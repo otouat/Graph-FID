@@ -4,6 +4,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 torch.manual_seed(123)
+import time
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
+from sklearn.manifold import TSNE
+import time
+import seaborn as sns
+sns.set_style('darkgrid')
+sns.set_palette('muted')
+sns.set_context("notebook", font_scale=1.5,
+                rc={"lines.linewidth": 2.5})
 
 import numpy as np
 from scipy import linalg
@@ -237,6 +249,52 @@ def n_community(c_sizes, p_inter=0.01):
     # print('connected comp: ', len(list(nx.connected_component_subgraphs(G))))
     return G
 
+def pass_data_iteratively(args,feature_dim_size,model, graphs, minibatch_size = 64):
+    model.eval()
+    
+    with torch.no_grad():
+        # evaluating
+        output = []
+        idx = np.arange(len(graphs))
+        for i in range(0, len(graphs), minibatch_size):
+            sampled_idx = idx[i:i + minibatch_size]
+            if len(sampled_idx) == 0:
+                continue
+            batch_test_graphs = [graphs[j] for j in sampled_idx]
+            test_input_x, test_graph_pool, test_X_concat, _ = get_batch_data(args,feature_dim_size,batch_test_graphs)
+            prediction_scores = model(test_input_x, test_graph_pool, test_X_concat).detach()
+            output.append(prediction_scores)
+    return torch.cat(output, 0)
+
+def fashion_scatter(x, colors):
+    # choose a color palette with seaborn.
+    num_classes = len(np.unique(colors))
+    palette = np.array(sns.color_palette("hls", num_classes))
+
+    # create a scatter plot.
+    f = plt.figure(figsize=(8, 8))
+    ax = plt.subplot(aspect='equal')
+    sc = ax.scatter(x[:,0], x[:,1], lw=0, s=40, c=palette[colors.astype(int)])
+    plt.xlim(-25, 25)
+    plt.ylim(-25, 25)
+    ax.axis('tight')
+
+    # add the labels for each digit corresponding to the label
+    txts = []
+
+    for i in range(num_classes):
+
+        # Position of each label at median of data points.
+
+        xtext, ytext = np.median(x[colors == i, :], axis=0)
+        txt = ax.text(xtext, ytext, str(i), fontsize=24)
+        txt.set_path_effects([
+            PathEffects.Stroke(linewidth=5, foreground="w"),
+            PathEffects.Normal()])
+        txts.append(txt)
+    plt.savefig("SNE.png")
+    return f, ax, sc, txts
+
 def main():
     """main process"""
     import os
@@ -288,7 +346,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     num_batches_per_epoch = int((len(train_graphs) - 1) / args.batch_size) + 1
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=num_batches_per_epoch, gamma=0.1)
-    out_dir = os.path.abspath(os.path.join(args.run_folder, "../runs_UGformerV1_Sup", args.model_name))
+    out_dir = os.path.abspath(os.path.join(args.run_folder, "Graph-FID/runs_UGformerV1_Sup", args.model_name))
     print("Writing to {}\n".format(out_dir))
     
     # Checkpoint directory
@@ -311,8 +369,16 @@ def main():
             scheduler.step()
 
         write_acc.write('epoch ' + str(epoch) + ' fold ' + str(args.fold_idx) + ' acc ' + str(acc_test*100) + '%\n')
-
+    torch.cuda.empty_cache()
     write_acc.close()
+
+    output = pass_data_iteratively(args,feature_dim_size,model, graphs)
+    X=output.cpu()
+    y = np.array([g.label for g in graphs])
+    fashion_tsne = TSNE(random_state=0).fit_transform(X)
+    fashion_scatter(fashion_tsne, y)
+
+    
 
 if __name__ == '__main__':
     main()
