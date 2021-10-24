@@ -305,7 +305,7 @@ def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
             g.node_features[range(len(g.node_tags)), [tag2index[tag] for tag in g.node_tags]] = 1
 
     print('# classes: %d' % len(label_dict))
-    print('# maximum node tag: %d' % len(tagset))
+    print('# maximum node tag: %d' % lentagset)
 
     print("# data: %d" % len(g_list))
 
