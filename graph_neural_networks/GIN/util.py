@@ -296,20 +296,12 @@ def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
     for graph in g_list:
         graph.node_tags = list(dict(graph.g.degree).values())
 
-    # Extracting unique tag labels
-    tagset = set([])
-    for g in g_list:
-        tagset = tagset.union(set(g.node_tags))
-
-    tagset = list(tagset)
-    tag2index = {tagset[i]: i for i in range(len(tagset))}
-    
     if random :
         for g in g_list:
             g.node_features = torch.ones(len(g.node_tags), 1)
     else :
         for g in g_list:
-            g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+            g.node_features = torch.zeros(len(g.node_tags), lentagset)
             g.node_features[range(len(g.node_tags)), [tag2index[tag] for tag in g.node_tags]] = 1
 
     print('# classes: %d' % len(label_dict))
