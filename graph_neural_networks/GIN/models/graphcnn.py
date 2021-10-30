@@ -238,12 +238,12 @@ class GraphCNN(nn.Module):
     def get_graph_embed_sum(self, g):
         self.eval()
         if self.random:
-            h = torch.cat([graph.node_features for graph in g], 0)
-            self.r = torch.randint(self.random, size=(len(h), 1)).float() / self.random
-            h = torch.cat([h, self.r], 1).to(self.device)
+            X_concat = torch.cat([graph.node_features for graph in g], 0)
+            self.r = torch.randint(self.random, size=(len(X_concat), 1)).float() / self.random
+            X_concat = torch.cat([X_concat, self.r], 1).to(self.device)
         else:
-            h = torch.cat([graph.node_features for graph in g], 0).to(self.device)
-            self.r = torch.randint(100, size=(len(h), 1)).float() / 100
+            X_concat = torch.cat([graph.node_features for graph in g], 0).to(self.device)
+            self.r = torch.randint(100, size=(len(X_concat), 1)).float() / 100
 
         graph_pool = self.__preprocess_graphpool(g)
 
@@ -251,6 +251,9 @@ class GraphCNN(nn.Module):
             padded_neighbor_list = self.__preprocess_neighbors_maxpool(g)
         else:
             Adj_block = self.__preprocess_neighbors_sumavepool(g)
+
+        hidden_rep = [X_concat]
+        h = X_concat
 
         with torch.no_grad():
             # return self.forward(g, h).detach().numpy()

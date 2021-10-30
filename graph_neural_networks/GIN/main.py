@@ -131,7 +131,7 @@ def main():
     if args.dataset != None :
         graphs, num_classes = load_data(args.dataset, args.degree_as_tag)
     else :
-        graphs, num_classes = load_synth_data(True)
+        graphs, num_classes = load_synth_data(True,, False
 
     ##10-fold cross validation. Conduct an experiment on the fold specified by args.fold_idx.
     train_graphs, test_graphs = separate_data(graphs, args.seed, args.fold_idx)

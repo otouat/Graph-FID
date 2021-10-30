@@ -5,7 +5,9 @@ from numpy.random import randint
 import torch
 from sklearn.model_selection import StratifiedKFold
 import os
-import pickle 
+import pickle
+
+
 class S2VGraph(object):
     def __init__(self, g, label, node_tags=None, node_features=None):
         '''
@@ -129,7 +131,7 @@ def load_data(dataset, degree_as_tag):
     return g_list, len(label_dict)
 
 
-def load_synth_data(degree_as_tag,random):
+def load_synth_data(degree_as_tag, random, onehot, random_graph_add=False):
     '''
         dataset: name of dataset
         test_proportion: ratio of test train split
@@ -141,81 +143,104 @@ def load_synth_data(degree_as_tag,random):
     label_dict = {}
     feat_dict = {}
     mapped = len(label_dict)
-    graph_list=[]
-    label_dict[1] = mapped
-    
-    for k in range(100,200):
-        for j in range(10):
-            i = randint(1,10)*0.1
-            g=nx.fast_gnp_random_graph(k,i)
-            graph_list.append(g)
-            g_list.append(S2VGraph(g, 1, [0] * g.number_of_nodes()))
-    save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('erdos')))
-    graph_list=[]
+    p_ER = []
+    graph_list = []
     mapped = len(label_dict)
     label_dict[2] = mapped
-        #c_sizes = [15] * 4
-    for k in range(100,200):
-        for j in range(10):
-            g=nx.watts_strogatz_graph(k,4,0.1)
+    # c_sizes = [15] * 4
+    for k in range(100, 200):
+        for j in range(5):
+            g = nx.watts_strogatz_graph(k, 4, 0.1)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 2, [0] * g.number_of_nodes()))
     save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('watts')))
-    graph_list=[]
+        graph_list,
+        os.path.join('saved_graphs', '{}_test.p'.format('watts')))
+    p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
+        [aa.number_of_nodes() ** 2 for aa in graph_list]))
+    graph_list = []
     mapped = len(label_dict)
     label_dict[3] = mapped
-        #c_sizes = [15] * 4
-    for k in range(100,200):
-        for j in range(10):
-            g=nx.barabasi_albert_graph(k,4)
+    # c_sizes = [15] * 4
+    for k in range(100, 200):
+        for j in range(5):
+            g = nx.barabasi_albert_graph(k, 4)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 3, [0] * g.number_of_nodes()))
     save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('barabasi')))
-    graph_list=[]
+        graph_list,
+        os.path.join('saved_graphs', '{}_test.p'.format('barabasi')))
+    p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
+        [aa.number_of_nodes() ** 2 for aa in graph_list]))
+    graph_list = []
     mapped = len(label_dict)
     label_dict[4] = mapped
-        #c_sizes = [15] * 4
-    for k in range(100,200):
-        for j in range(10):
+    # c_sizes = [15] * 4
+    for k in range(100, 200):
+        for j in range(5):
             c_sizes = np.random.choice(list(range(12, 17)), 2)
-            g=n_community(c_sizes, p_inter=0.05)
+            g = n_community(c_sizes, p_inter=0.05)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 4, [0] * sum(c_sizes)))
     save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('community2')))
-    graph_list=[]
+        graph_list,
+        os.path.join('saved_graphs', '{}_test.p'.format('community2')))
+    p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
+        [aa.number_of_nodes() ** 2 for aa in graph_list]) + 0.1)
+    graph_list = []
     mapped = len(label_dict)
     label_dict[5] = mapped
-        #c_sizes = [15] * 4
-    for k in range(100,200):
-        for i in range(10):
-            g=nx.ladder_graph(k)
+    # c_sizes = [15] * 4
+    for k in range(100, 200):
+        for i in range(5):
+            g = nx.ladder_graph(k)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 5, [0] * g.number_of_nodes()))
     save_graph_list(graph_list,
                     os.path.join('saved_graphs', '{}_test.p'.format('ladder')))
-    graph_list=[]
+    graph_list = []
     mapped = len(label_dict)
     label_dict[6] = mapped
-        #c_sizes = [15] * 4
-    for k in range(10,20):
-        for j in range(10,20):
-            for i in range(10):
-                g=nx.grid_2d_graph(k, j)
+    # c_sizes = [15] * 4
+    for k in range(10, 20):
+        for j in range(10, 20):
+            for i in range(5):
+                g = nx.grid_2d_graph(k, j)
                 adj_matrix = nx.adjacency_matrix(g)
-                g=nx.Graph(adj_matrix)
+                g = nx.Graph(adj_matrix)
                 graph_list.append(g)
                 g_list.append(S2VGraph(g, 6, [0] * g.number_of_nodes()))
     save_graph_list(
-                graph_list,
-                os.path.join('saved_graphs', '{}_test.p'.format('grid')))
+        graph_list,
+        os.path.join('saved_graphs', '{}_test.p'.format('grid')))
+    p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
+        [aa.number_of_nodes() ** 2 for aa in graph_list]))
+    graph_list = []
+    mapped = len(label_dict)
+    label_dict[7] = mapped
+    # c_sizes = [15] * 4
+    for k in range(100, 200):
+        for j in range(5):
+            c_sizes = np.random.choice(list(range(12, 17)), 4)
+            g = n_community(c_sizes, p_inter=0.05)
+            graph_list.append(g)
+            g_list.append(S2VGraph(g, 7, [0] * sum(c_sizes)))
+    save_graph_list(
+        graph_list,
+        os.path.join('saved_graphs', '{}_test.p'.format('community4')))
+    p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
+        [aa.number_of_nodes() ** 2 for aa in graph_list]) + 0.1)
+    if random_graph_add:
+        l = 7
+        for p in p_ER:
+            graph_list = []
+            mapped = len(label_dict)
+            label_dict[l] = mapped
+            graph_list = [nx.fast_gnp_random_graph(200, p, seed=ii) for ii in
+                          range(500)]
+            for g in graph_list:
+                g_list.append(S2VGraph(g, l, [0] * g.number_of_nodes()))
+            l+=1
     # add labels and edge_mat
     for g in g_list:
         g.neighbors = [[] for i in range(len(g.g))]
@@ -248,22 +273,28 @@ def load_synth_data(degree_as_tag,random):
     tagset = list(tagset)
     tag2index = {tagset[i]: i for i in range(len(tagset))}
 
-    if random :
+    if random:
         for g in g_list:
             g.node_features = torch.ones(len(g.node_tags), 1)
-    else :
-        for g in g_list:
-            g.node_features = torch.zeros(len(g.node_tags), len(tagset))
-            g.node_features[range(len(g.node_tags)), [tag2index[tag] for tag in g.node_tags]] = 1
+    else:
+        if onehot:
+            for g in g_list:
+                g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+                g.node_features[range(len(g.node_tags)), [tag2index[tag]
+                                                          for tag in g.node_tags]] = 1
+        else:
+            for g in g_list:
+                g.node_features = torch.ones(len(g.node_tags), 1)
 
     print('# classes: %d' % len(label_dict))
     print('# maximum node tag: %d' % len(tagset))
 
     print("# data: %d" % len(g_list))
 
-    return g_list, len(label_dict), tag2index , len(tagset)
+    return g_list, len(label_dict), tag2index, len(tagset)
 
-def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
+
+def load_graph_asS2Vgraph(graph_list, label, random, tag2index, lentagset, onehot=False):
     """Convert the nx.Graph list into a S2vGraph list ( preparing for GIN )"""
     g_list = []
     label_dict = {}
@@ -272,9 +303,9 @@ def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
     label_dict[label] = mapped
     for k in range(len(graph_list)):
         adj_matrix = nx.adjacency_matrix(graph_list[k])
-        g=nx.Graph(adj_matrix)
+        g = nx.Graph(adj_matrix)
         g_list.append(S2VGraph(g, label, [0] * graph_list[k].number_of_nodes()))
-    
+
     # add labels and edge_mat
     for g in g_list:
         g.neighbors = [[] for i in range(len(g.g))]
@@ -295,14 +326,21 @@ def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
 
     for graph in g_list:
         graph.node_tags = list(dict(graph.g.degree).values())
+        for i in range(len(graph.node_tags)):
+            if graph.node_tags[i] not in tag2index.keys():
+                graph.node_tags[i] = take_closest(list(tag2index.keys()), graph.node_tags[i])
 
-    if random :
+    if random:
         for g in g_list:
             g.node_features = torch.ones(len(g.node_tags), 1)
-    else :
-        for g in g_list:
-            g.node_features = torch.zeros(len(g.node_tags), lentagset)
-            g.node_features[range(len(g.node_tags)), [tag2index[tag] for tag in g.node_tags]] = 1
+    else:
+        if onehot:
+            for g in g_list:
+                g.node_features = torch.zeros(len(g.node_tags), lentagset)
+                g.node_features[range(len(g.node_tags)), [tag2index[tag] for tag in g.node_tags]] = 1
+        else:
+            for g in g_list:
+                g.node_features = torch.ones(len(g.node_tags), 1)
 
     print('# classes: %d' % len(label_dict))
     print('# maximum node tag: %d' % lentagset)
@@ -310,6 +348,7 @@ def load_graph_asS2Vgraph(graph_list,label,random,tag2index , lentagset):
     print("# data: %d" % len(g_list))
 
     return g_list, len(label_dict)
+
 
 def separate_data(graph_list, seed, fold_idx):
     assert 0 <= fold_idx and fold_idx < 10, "fold_idx must be from 0 to 9."
@@ -325,6 +364,7 @@ def separate_data(graph_list, seed, fold_idx):
     test_graph_list = [graph_list[i] for i in test_idx]
 
     return train_graph_list, test_graph_list
+
 
 def n_community(c_sizes, p_inter=0.01):
     graphs = [nx.gnp_random_graph(c_sizes[i], 0.7, seed=i) for i in range(len(c_sizes))]
@@ -347,11 +387,13 @@ def n_community(c_sizes, p_inter=0.01):
     # print('connected comp: ', len(list(nx.connected_component_subgraphs(G))))
     return G
 
+
 # save a list of graphs
 def save_graph_list(G_list, fname):
     with open(fname, "wb") as f:
         pickle.dump(G_list, f)
-        
+
+
 def pick_connected_component_new(G):
     # import pdb; pdb.set_trace()
 
@@ -377,7 +419,58 @@ def pick_connected_component_new(G):
     return G
 
 
+def perturb_new(graph_list, p):
+    ''' Perturb the list of graphs by adding/removing edges.
+    Args:
+        p_add: probability of adding edges. If None, estimate it according to graph density,
+            such that the expected number of added edges is equal to that of deleted edges.
+        p_del: probability of removing edges
+    Returns:
+        A list of graphs that are perturbed from the original graphs
+    '''
+    perturbed_graph_list = []
+    for G_original in graph_list:
+        G = G_original.copy()
+        edge_remove_count = 0
+        for (u, v) in list(G.edges()):
+            if np.random.rand() < p:
+                G.remove_edge(u, v)
+                edge_remove_count += 1
+        # randomly add the edges back
+        for i in range(edge_remove_count):
+            while True:
+                u = np.random.randint(0, G.number_of_nodes())
+                v = np.random.randint(0, G.number_of_nodes())
+                if (not G.has_edge(u, v)) and (u != v):
+                    break
+            G.add_edge(u, v)
+        perturbed_graph_list.append(G)
+    return perturbed_graph_list
+
+
 def load_graph_list(fname, is_real=True):
     with open(fname, "rb") as f:
         graph_list = pickle.load(f)
     return graph_list
+
+
+from bisect import bisect_left
+
+
+def take_closest(myList, myNumber):
+    """
+    Assumes myList is sorted. Returns closest value to myNumber.
+
+    If two numbers are equally close, return the smallest number.
+    """
+    pos = bisect_left(myList, myNumber)
+    if pos == 0:
+        return myList[0]
+    if pos == len(myList):
+        return myList[-1]
+    before = myList[pos - 1]
+    after = myList[pos]
+    if after - myNumber < myNumber - before:
+        return after
+    else:
+        return before
