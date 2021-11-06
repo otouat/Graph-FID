@@ -133,16 +133,15 @@ def load_data(dataset, degree_as_tag):
 
 def load_synth_data(degree_as_tag, random, onehot, random_graph_add=False):
     '''
-        dataset: name of dataset
-        test_proportion: ratio of test train split
-        seed: random seed for random splitting of dataset
+        Create the synthetic dataset for FID calculation
+        random: Choose if we use random features in FID
+        onehot: Choose if we init one hot degree features or not
+        random_graph_add: Choose if we want to add new graphs in the dataset
     '''
     os.makedirs('saved_graphs', exist_ok=True)
     print('loading data')
     g_list = []
     label_dict = {}
-    feat_dict = {}
-    mapped = len(label_dict)
     p_ER = []
     graph_list = []
     mapped = len(label_dict)
@@ -178,8 +177,8 @@ def load_synth_data(degree_as_tag, random, onehot, random_graph_add=False):
     # c_sizes = [15] * 4
     for k in range(100, 200):
         for j in range(5):
-            c_sizes = np.random.choice(list(range(12, 17)), 2)
-            g = n_community(c_sizes, p_inter=0.05)
+            c_sizes = np.random.choice(list(range(6, 10)), 2)
+            g = n_community(c_sizes, p_inter=0.005)
             graph_list.append(g)
             g_list.append(S2VGraph(g, 4, [0] * sum(c_sizes)))
     save_graph_list(
@@ -204,32 +203,16 @@ def load_synth_data(degree_as_tag, random, onehot, random_graph_add=False):
     # c_sizes = [15] * 4
     for k in range(10, 20):
         for j in range(10, 20):
-            for i in range(5):
-                g = nx.grid_2d_graph(k, j)
-                adj_matrix = nx.adjacency_matrix(g)
-                g = nx.Graph(adj_matrix)
-                graph_list.append(g)
-                g_list.append(S2VGraph(g, 6, [0] * g.number_of_nodes()))
+            g = nx.grid_2d_graph(k, j)
+            adj_matrix = nx.adjacency_matrix(g)
+            g = nx.Graph(adj_matrix)
+            graph_list.append(g)
+            g_list.append(S2VGraph(g, 6, [0] * g.number_of_nodes()))
     save_graph_list(
         graph_list,
         os.path.join('saved_graphs', '{}_test.p'.format('grid')))
     p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
         [aa.number_of_nodes() ** 2 for aa in graph_list]))
-    graph_list = []
-    mapped = len(label_dict)
-    label_dict[7] = mapped
-    # c_sizes = [15] * 4
-    for k in range(100, 200):
-        for j in range(5):
-            c_sizes = np.random.choice(list(range(12, 17)), 4)
-            g = n_community(c_sizes, p_inter=0.05)
-            graph_list.append(g)
-            g_list.append(S2VGraph(g, 7, [0] * sum(c_sizes)))
-    save_graph_list(
-        graph_list,
-        os.path.join('saved_graphs', '{}_test.p'.format('community4')))
-    p_ER.append(sum([aa.number_of_edges() for aa in graph_list]) / sum(
-        [aa.number_of_nodes() ** 2 for aa in graph_list]) + 0.1)
     if random_graph_add:
         l = 7
         for p in p_ER:
@@ -274,8 +257,14 @@ def load_synth_data(degree_as_tag, random, onehot, random_graph_add=False):
     tag2index = {tagset[i]: i for i in range(len(tagset))}
 
     if random:
-        for g in g_list:
-            g.node_features = torch.ones(len(g.node_tags), 1)
+        if onehot:
+            for g in g_list:
+                g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+                g.node_features[range(len(g.node_tags)), [tag2index[tag]
+                                                          for tag in g.node_tags]] = 1
+        else:
+            for g in g_list:
+                g.node_features = torch.ones(len(g.node_tags), 1)
     else:
         if onehot:
             for g in g_list:
@@ -293,6 +282,80 @@ def load_synth_data(degree_as_tag, random, onehot, random_graph_add=False):
 
     return g_list, len(label_dict), tag2index, len(tagset)
 
+
+def load_two_sample(sample1,sample2,random,onehot,degree_as_tag=True):
+    g_list = []
+    label_dict = {}
+    mapped = len(label_dict)
+    label_dict[1] = mapped
+    for k in range(len(sample1)):
+        adj_matrix = nx.adjacency_matrix(sample1[k])
+        g = nx.Graph(adj_matrix)
+        g_list.append(S2VGraph(g, 1, [0] * sample1[k].number_of_nodes()))
+    mapped = len(label_dict)
+    label_dict[2] = mapped
+    for k in range(len(sample2)):
+        adj_matrix = nx.adjacency_matrix(sample2[k])
+        g = nx.Graph(adj_matrix)
+        g_list.append(S2VGraph(g, 2, [0] * sample2[k].number_of_nodes()))
+
+    # add labels and edge_mat
+    for g in g_list:
+        g.neighbors = [[] for i in range(len(g.g))]
+        for i, j in g.g.edges():
+            g.neighbors[i].append(j)
+            g.neighbors[j].append(i)
+        degree_list = []
+        for i in range(len(g.g)):
+            g.neighbors[i] = g.neighbors[i]
+            degree_list.append(len(g.neighbors[i]))
+        g.max_neighbor = max(degree_list)
+
+        g.label = label_dict[g.label]
+
+        edges = [list(pair) for pair in g.g.edges()]
+        edges.extend([[i, j] for j, i in edges])
+
+        deg_list = list(dict(g.g.degree(range(len(g.g)))).values())
+        g.edge_mat = torch.LongTensor(edges).transpose(0, 1)
+
+    if degree_as_tag:
+        for g in g_list:
+            g.node_tags = list(dict(g.g.degree).values())
+
+    # Extracting unique tag labels
+    tagset = set([])
+    for g in g_list:
+        tagset = tagset.union(set(g.node_tags))
+
+    tagset = list(tagset)
+    tag2index = {tagset[i]: i for i in range(len(tagset))}
+
+    if random:
+        if onehot:
+            for g in g_list:
+                g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+                g.node_features[range(len(g.node_tags)), [tag2index[tag]
+                                                          for tag in g.node_tags]] = 1
+        else:
+            for g in g_list:
+                g.node_features = torch.ones(len(g.node_tags), 1)
+    else:
+        if onehot:
+            for g in g_list:
+                g.node_features = torch.zeros(len(g.node_tags), len(tagset))
+                g.node_features[range(len(g.node_tags)), [tag2index[tag]
+                                                          for tag in g.node_tags]] = 1
+        else:
+            for g in g_list:
+                g.node_features = torch.ones(len(g.node_tags), 1)
+
+    print('# classes: %d' % len(label_dict))
+    print('# maximum node tag: %d' % len(tagset))
+
+    print("# data: %d" % len(g_list))
+
+    return g_list, len(label_dict), tag2index, len(tagset)
 
 def load_graph_asS2Vgraph(graph_list, label, random, tag2index, lentagset, onehot=False):
     """Convert the nx.Graph list into a S2vGraph list ( preparing for GIN )"""
@@ -331,8 +394,14 @@ def load_graph_asS2Vgraph(graph_list, label, random, tag2index, lentagset, oneho
                 graph.node_tags[i] = take_closest(list(tag2index.keys()), graph.node_tags[i])
 
     if random:
-        for g in g_list:
-            g.node_features = torch.ones(len(g.node_tags), 1)
+        if onehot:
+            for g in g_list:
+                g.node_features = torch.zeros(len(g.node_tags), lentagset)
+                g.node_features[range(len(g.node_tags)), [tag2index[tag]
+                                                          for tag in g.node_tags]] = 1
+        else:
+            for g in g_list:
+                g.node_features = torch.ones(len(g.node_tags), 1)
     else:
         if onehot:
             for g in g_list:
@@ -366,8 +435,8 @@ def separate_data(graph_list, seed, fold_idx):
     return train_graph_list, test_graph_list
 
 
-def n_community(c_sizes, p_inter=0.01):
-    graphs = [nx.gnp_random_graph(c_sizes[i], 0.7, seed=i) for i in range(len(c_sizes))]
+def n_community(c_sizes, p_inter=0.01,pcom=0.7):
+    graphs = [nx.gnp_random_graph(c_sizes[i], pcom, seed=i) for i in range(len(c_sizes))]
     G = nx.disjoint_union_all(graphs)
     communities = [G.subgraph(c) for c in nx.connected_components(G)]
     for i in range(len(communities)):
